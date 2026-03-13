@@ -1,18 +1,21 @@
-const { ethers } = require("hardhat");
+import { network } from "hardhat";
 
 async function main() {
-  const QuestionPaper = await ethers.getContractFactory("QuestionPaper");
+  const { ethers } = await network.connect();
 
-  const contract = await QuestionPaper.deploy();
+  const [deployer] = await ethers.getSigners();
+  const Contract = await ethers.getContractFactory(
+    "QuestionPaperRegistry",
+    deployer,
+  );
+  const contract = await Contract.deploy();
 
-  await contract.deployed();
+  await contract.waitForDeployment();
 
-  console.log("Contract deployed at:", contract.address);
+  console.log("Contract deployed to:", await contract.getAddress());
 }
 
-main()
-  .then(() => process.exit(0))
-  .catch((error) => {
-    console.error(error);
-    process.exit(1);
-  });
+main().catch((error) => {
+  console.error(error);
+  process.exitCode = 1;
+});

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-contract QuestionPaperRegistry{
+contract QuestionPaperRegistry {
 
     address public admin;
 
@@ -9,18 +9,19 @@ contract QuestionPaperRegistry{
         admin = msg.sender;
     }
 
-    struct OriginalPaper{
+    struct OriginalPaper {
         string originalHash;
         uint256 timestamp;
     }
 
-    struct CenterPaper{
+    struct CenterPaper {
         string centerId;
         string watermarkedHash;
         uint256 timestamp;
     }
 
     mapping(string => OriginalPaper) public originalPapers;
+
     mapping(string => mapping(string => CenterPaper)) public centerPapers;
 
     event OriginalPaperStored(
@@ -35,13 +36,15 @@ contract QuestionPaperRegistry{
         uint256 timestamp
     );
 
-    modifier onlyAdmin(){
+    modifier onlyAdmin() {
         require(msg.sender == admin, "Only admin allowed");
         _;
     }
 
-    function storeOriginalPaper(string memory _originalHash) public onlyAdmin{
-        
+    function storeOriginalPaper(
+        string memory _originalHash
+    ) public onlyAdmin {
+
         originalPapers[_originalHash] = OriginalPaper(
             _originalHash,
             block.timestamp
@@ -72,5 +75,4 @@ contract QuestionPaperRegistry{
             block.timestamp
         );
     }
-
 }

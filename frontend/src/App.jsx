@@ -1,29 +1,33 @@
 import { useState } from "react";
-import SHA256 from "crypto-js/sha256";
-import { connectToContract } from "./blockchain";
+import Login from "./Login";
+import AdminDashboard from "./AdminDashboard";
+import CenterDashboard from "./CenterDashboard";
 
 function App() {
-  const [hash, setHash] = useState("");
+  const [userRole, setUserRole] = useState(null); // 'admin' or 'center'
 
-  async function uploadFile(event) {
-    const file = event.target.files[0];
-    const text = await file.text();
-    const hashValue = SHA256(text).toString();
-    setHash(hashValue);
-    const contract = await connectToContract();
-    await contract.storeOriginalPaper(hashValue);
-    alert("Hash stored on blockchain!");
+  const handleLogin = (email, password) => {
+    // Determine role based on email context for mock purposes
+    if (email.toLowerCase().includes("admin")) {
+      setUserRole("admin");
+    } else {
+      setUserRole("center");
+    }
+  };
+
+  const handleLogout = () => {
+    setUserRole(null);
   }
-  return (
-    <div style={{ padding: "50px" }}>
-      <h2>Upload Question Paper</h2>
 
-      <input type="file" onChange={uploadFile} />
+  if (!userRole) {
+    return <Login onLogin={handleLogin} />;
+  }
 
-      <p>Generated Hash:</p>
-      <p>{hash}</p>
-    </div>
-  );
+  if (userRole === "admin") {
+    return <AdminDashboard onLogout={handleLogout} />;
+  }
+
+  return <CenterDashboard onLogout={handleLogout} />;
 }
 
 export default App;

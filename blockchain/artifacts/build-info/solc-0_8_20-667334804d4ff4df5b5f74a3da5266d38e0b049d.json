@@ -1,0 +1,35 @@
+{
+  "_format": "hh3-sol-build-info-1",
+  "id": "solc-0_8_20-667334804d4ff4df5b5f74a3da5266d38e0b049d",
+  "solcVersion": "0.8.20",
+  "solcLongVersion": "0.8.20+commit.a1b79de6",
+  "userSourceNameMap": {
+    "contracts/QuestionPaperRegistry.sol": "project/contracts/QuestionPaperRegistry.sol"
+  },
+  "input": {
+    "language": "Solidity",
+    "settings": {
+      "evmVersion": "shanghai",
+      "outputSelection": {
+        "*": {
+          "": [
+            "ast"
+          ],
+          "*": [
+            "abi",
+            "evm.bytecode",
+            "evm.deployedBytecode",
+            "evm.methodIdentifiers",
+            "metadata"
+          ]
+        }
+      },
+      "remappings": []
+    },
+    "sources": {
+      "project/contracts/QuestionPaperRegistry.sol": {
+        "content": "// SPDX-License-Identifier: MIT\r\npragma solidity ^0.8.20;\r\n\r\ncontract QuestionPaperRegistry {\r\n\r\n    address public admin;\r\n\r\n    constructor() {\r\n        admin = msg.sender;\r\n    }\r\n\r\n    struct OriginalPaper {\r\n        string originalHash;\r\n        uint256 timestamp;\r\n    }\r\n\r\n    struct CenterPaper {\r\n        string centerId;\r\n        string watermarkedHash;\r\n        uint256 timestamp;\r\n    }\r\n\r\n    mapping(string => OriginalPaper) public originalPapers;\r\n\r\n    mapping(string => mapping(string => CenterPaper)) public centerPapers;\r\n\r\n    event OriginalPaperStored(\r\n        string originalHash,\r\n        uint256 timestamp\r\n    );\r\n\r\n    event CenterPaperStored(\r\n        string originalHash,\r\n        string centerId,\r\n        string watermarkedHash,\r\n        uint256 timestamp\r\n    );\r\n\r\n    modifier onlyAdmin() {\r\n        require(msg.sender == admin, \"Only admin allowed\");\r\n        _;\r\n    }\r\n\r\n    function storeOriginalPaper(\r\n        string memory _originalHash\r\n    ) public onlyAdmin {\r\n\r\n        originalPapers[_originalHash] = OriginalPaper(\r\n            _originalHash,\r\n            block.timestamp\r\n        );\r\n\r\n        emit OriginalPaperStored(\r\n            _originalHash,\r\n            block.timestamp\r\n        );\r\n    }\r\n\r\n    function storeCenterPaper(\r\n        string memory _originalHash,\r\n        string memory _centerId,\r\n        string memory _watermarkedHash\r\n    ) public onlyAdmin {\r\n\r\n        centerPapers[_originalHash][_centerId] = CenterPaper(\r\n            _centerId,\r\n            _watermarkedHash,\r\n            block.timestamp\r\n        );\r\n\r\n        emit CenterPaperStored(\r\n            _originalHash,\r\n            _centerId,\r\n            _watermarkedHash,\r\n            block.timestamp\r\n        );\r\n    }\r\n}"
+      }
+    }
+  }
+}

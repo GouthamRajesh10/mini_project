@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import SHA256 from 'crypto-js/sha256';
 import { connectToContract, verifyPaperOnBlockchain } from './blockchain';
 import './Dashboard.css';
 
@@ -25,28 +24,63 @@ export default function AdminDashboard({ onLogout }) {
     
     setIsUploading(true);
     try {
-      const text = await file.text();
-      const hashValue = SHA256(text).toString();
-      setUploadHash(hashValue);
-      const contract = await connectToContract();
-      await contract.storeOriginalPaper(hashValue);
-      alert("Hash stored on blockchain!");
+      const token = localStorage.getItem('token');
+      const formData = new FormData();
+      formData.append('questionPaper', file);
+
+      const response = await fetch('/api/admin/upload-paper', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: formData,
+      });
+
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.message || 'Upload failed');
+      }
+
+      setUploadHash(data.hash);
+      alert("Hash stored on blockchain via Backend!");
     } catch (err) {
       console.error(err);
-      alert("Failed to store on blockchain. Check console.");
+      alert("Failed to store on backend. Check console: " + err.message);
     }
     setIsUploading(false);
   };
 
-  const handleDistribute = (e) => {
+  const handleDistribute = async (e) => {
     e.preventDefault();
-    setDistributeStatus('Processing...');
+    const file = document.getElementById('distribute-file').files[0];
+    if (!file || !selectedCenter) return;
     
-    // Mocking Backend Signature & Distribution Process
-    setTimeout(() => {
-      setDistributeStatus(`Successfully distributed to ${selectedCenter} with digital signature.`);
-      setTimeout(() => setDistributeStatus(''), 5000);
-    }, 1500);
+    setDistributeStatus('Processing & Cryptographically Signing...');
+    try {
+      const token = localStorage.getItem('token');
+      const formData = new FormData();
+      formData.append('questionPaper', file);
+      formData.append('centerId', selectedCenter);
+
+      const response = await fetch('/api/admin/distribute-paper', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: formData,
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.message || 'Distribution failed');
+      }
+
+      setDistributeStatus(`Successfully signed for ${selectedCenter}! Verified Hash stored on Blockchain.`);
+    } catch (err) {
+      console.error(err);
+      setDistributeStatus(`Distribution failed: ${err.message}`);
+    }
   };
 
   const handleAnalyze = async (event) => {
@@ -56,12 +90,24 @@ export default function AdminDashboard({ onLogout }) {
     setIsAnalyzing(true);
     setAnalysisResult(null);
     try {
-      const text = await file.text();
-      const hashValue = SHA256(text).toString();
+      // Use Web Crypto API to hash the raw binary of the PDF (matches Node's crypto buffer)
+      const arrayBuffer = await file.arrayBuffer();
+      const hashBuffer = await crypto.subtle.digest('SHA-256', arrayBuffer);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      const hashValue = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
       
-      // Call mock verification function
-      const exists = await verifyPaperOnBlockchain(hashValue);
-      setAnalysisResult({ hash: hashValue, valid: exists });
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/admin/verify-hash', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ hash: hashValue })
+      });
+      
+      const data = await response.json();
+      setAnalysisResult({ hash: hashValue, valid: data.valid, type: data.type, message: data.message });
     } catch (err) {
       console.error(err);
       setAnalysisResult({ error: "Verification failed. Check console." });
@@ -129,15 +175,15 @@ export default function AdminDashboard({ onLogout }) {
                     className="select-input"
                   >
                     <option value="">-- Select Center --</option>
-                    <option value="Center A">Center A (Mumbai)</option>
-                    <option value="Center B">Center B (Delhi)</option>
-                    <option value="Center C">Center C (Bangalore)</option>
+                    <option value="centre1">Center A (Mumbai)</option>
+                    <option value="centre2">Center B (Delhi)</option>
+                    <option value="centre3">Center C (Bangalore)</option>
                   </select>
                 </div>
 
                 <div className="form-group">
                   <label>Upload Paper for Signature</label>
-                  <input type="file" required className="standard-file-input" />
+                  <input type="file" id="distribute-file" required className="standard-file-input" />
                 </div>
 
                 <button type="submit" className="action-btn">
@@ -173,10 +219,11 @@ export default function AdminDashboard({ onLogout }) {
                     <>
                       <h4>{analysisResult.valid ? '✅ Highly Authentic' : '❌ Validation Failed'}</h4>
                       <p><strong>Computed Hash:</strong> <span className="hash-text small">{analysisResult.hash}</span></p>
+                      {analysisResult.valid && <p><strong>Paper Type:</strong> {analysisResult.type}</p>}
                       <p className="verification-text">
                         {analysisResult.valid 
-                          ? "This paper perfectly matches the original structure stored on the blockchain." 
-                          : "This paper does NOT match any original hash on the blockchain. It may be modified or tampered with."}
+                          ? "This paper perfectly matches the structure stored securely on the blockchain." 
+                          : (analysisResult.message || "This paper does NOT match any original hash on the blockchain. It may be modified or tampered with.")}
                       </p>
                     </>
                   )}

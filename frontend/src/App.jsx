@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Login from "./Login";
 import AdminDashboard from "./AdminDashboard";
 import CenterDashboard from "./CenterDashboard";
@@ -6,9 +6,28 @@ import CenterDashboard from "./CenterDashboard";
 function App() {
   const [userRole, setUserRole] = useState(null); // 'admin' or 'center'
 
-  const handleLogin = (email, password) => {
-    // Determine role based on email context for mock purposes
-    if (email.toLowerCase().includes("admin")) {
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        if (payload && payload.role) {
+          if (payload.role === "Admin") {
+            setUserRole("admin");
+          } else {
+            setUserRole("center");
+          }
+        }
+      } catch (e) {
+        console.error("Failed to parse token", e);
+        localStorage.removeItem('token');
+      }
+    }
+  }, []);
+
+  const handleLogin = (role) => {
+    // User model roles are "Admin" or "User"
+    if (role === "Admin") {
       setUserRole("admin");
     } else {
       setUserRole("center");
@@ -16,6 +35,7 @@ function App() {
   };
 
   const handleLogout = () => {
+    localStorage.removeItem('token');
     setUserRole(null);
   }
 

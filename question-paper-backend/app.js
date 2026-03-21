@@ -11,8 +11,10 @@ const app = express();
 app.use(express.json());
 
 app.use("/api/auth", authRoutes);
+const centreRoutes = require("./routes/centreRoutes");
 
 app.use("/api/admin", adminRoutes);
+app.use("/api/centre", centreRoutes);
 app.get("/", (req, res) => {
   res.send("Question Paper Backend is Running");
 });

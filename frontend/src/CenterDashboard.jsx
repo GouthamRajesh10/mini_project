@@ -1,33 +1,60 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import './Dashboard.css';
 
 export default function CenterDashboard({ onLogout }) {
-  // Mock data representing papers received from the admin
-  const [papers] = useState([
-    {
-      id: 1,
-      title: "Mathematics Final - Set A",
-      dateReceived: "2026-03-13",
-      signatureStatus: "Valid Signature Attached"
-    },
-    {
-      id: 2,
-      title: "Physics Midterm - Advanced",
-      dateReceived: "2026-03-12",
-      signatureStatus: "Valid Signature Attached"
-    }
-  ]);
-
+  const [papers, setPapers] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [downloadingId, setDownloadingId] = useState(null);
 
-  const handleDownload = (id, title) => {
-    setDownloadingId(id);
+  useEffect(() => {
+    fetchPapers();
+  }, []);
 
-    // Mocking file download
-    setTimeout(() => {
-      setDownloadingId(null);
+  const fetchPapers = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/centre/papers', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await response.json();
+      if (response.ok) {
+        setPapers(data);
+      } else {
+        console.error('Failed to fetch papers:', data.message);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDownload = async (id, title) => {
+    setDownloadingId(id);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`/api/centre/download-paper/${id}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      
+      if (!response.ok) throw new Error("Download failed");
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = title;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      
       alert(`Successfully downloaded securely signed PDF for: ${title}`);
-    }, 1500);
+    } catch (err) {
+      console.error(err);
+      alert("Failed to download.");
+    } finally {
+      setDownloadingId(null);
+    }
   };
 
   return (
@@ -52,25 +79,27 @@ export default function CenterDashboard({ onLogout }) {
             <p className="description">View and download digitally signed question papers assigned to your center.</p>
 
             <div className="papers-grid">
-              {papers.map(paper => (
-                <div key={paper.id} className="paper-card">
+              {loading ? (
+                <p>Loading papers...</p>
+              ) : papers.map(paper => (
+                <div key={paper._id} className="paper-card">
                   <div className="paper-icon">📄</div>
                   <div className="paper-info">
-                    <h4>{paper.title}</h4>
-                    <p className="date">Received: {paper.dateReceived}</p>
-                    <p className="badge-signature">✔️ {paper.signatureStatus}</p>
+                    <h4>{paper.originalName}</h4>
+                    <p className="date">Received: {new Date(paper.uploadAt).toLocaleDateString()}</p>
+                    <p className="badge-signature">✔️ Valid Signature Attached</p>
                   </div>
                   <button
-                    className={`download-btn ${downloadingId === paper.id ? 'loading' : ''}`}
-                    onClick={() => handleDownload(paper.id, paper.title)}
-                    disabled={downloadingId === paper.id}
+                    className={`download-btn ${downloadingId === paper._id ? 'loading' : ''}`}
+                    onClick={() => handleDownload(paper._id, paper.originalName)}
+                    disabled={downloadingId === paper._id}
                   >
-                    {downloadingId === paper.id ? 'Decrypting...' : 'Download PDF'}
+                    {downloadingId === paper._id ? 'Decrypting...' : 'Download PDF'}
                   </button>
                 </div>
               ))}
 
-              {papers.length === 0 && (
+              {!loading && papers.length === 0 && (
                 <div className="empty-state">
                   <p>No papers received yet.</p>
                 </div>

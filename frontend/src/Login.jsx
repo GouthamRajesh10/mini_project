@@ -2,18 +2,38 @@ import { useState } from 'react';
 import './Login.css';
 
 export default function Login({ onLogin }) {
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [error, setError] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
-    // Simulate API call for auth
-    setTimeout(() => {
+    setError(null);
+
+    try {
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ username, password }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'Login failed');
+      }
+
+      localStorage.setItem('token', data.token);
+      onLogin(data.role);
+    } catch (err) {
+      setError(err.message);
+    } finally {
       setIsLoading(false);
-      onLogin(email, password);
-    }, 1200);
+    }
   };
 
   return (
@@ -28,17 +48,18 @@ export default function Login({ onLogin }) {
         <div className="login-header">
           <h1>Welcome Back</h1>
           <p>Please enter your details to sign in.</p>
+          {error && <div className="error-message" style={{ color: 'red', marginTop: '10px' }}>{error}</div>}
         </div>
 
         <form onSubmit={handleSubmit} className="login-form">
           <div className="input-group">
-            <label htmlFor="email">Email</label>
+            <label htmlFor="username">Username</label>
             <input
-              type="email"
-              id="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="Enter your email"
+              type="text"
+              id="username"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              placeholder="Enter your username"
               required
             />
           </div>
